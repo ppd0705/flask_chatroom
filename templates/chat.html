@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>chatroom</title>
+    <link href="https://cdn.bootcss.com/pure/1.0.0/pure-min.css" rel="stylesheet">
+    <style>
+        .main-div {
+            text-align: center;
+        }
+       #id-chat-area {
+             width: 50%;
+           height: auto;
+             border-radius: 4px;
+        }
+        #id-input {
+             width: 50%;
+            background: palegreen;
+             border-radius: 4px;
+        }
+        #id-choose-room {
+             width: 50%;
+             margin: 0 auto;
+             background: green;
+         }
+        .text{
+            padding-top: 60px;
+        }
+        .room {
+            float: left;
+            width: 25%;
+            color: white;
+            display: inline-block;
+            padding-bottom: 20px;
+            padding-top: 20px;
+            text-decoration: none;
+            background: #80bd01;
+        }
+        .room:hover{
+            background: white;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-div">
+        <h1 id="id-room-name">聊天室</h1>
+        <nav id="id-choose-room">
+            <a class="room" href="#">大厅</a>
+            <a class="room" href="#">户外旅游</a>
+            <a class="room" href="#">美剧英剧</a>
+            <a class="room" href="#">校园时光</a>
+        </nav>
+        <br>
+        <div class="text">
+            <textarea id="id-chat-area"   rows="16"  disabled></textarea>
+        </div>
+        <br>
+        <input id="id-input"  placeholder=" 请输入聊天内容">
+    </div>
+
+    <script src="https://cdn.bootcss.com/socket.io/2.0.3/socket.io.js"></script>
+    <script >
+        var socket
+        var current_room = '大厅'
+        var e = function(sel){
+            return document.querySelector(sel)
+        }
+        var chat_area = e('#id-chat-area')
+        var clear_board = function () {
+            chat_area.value = ''
+        }
+        var change_title = function () {
+           tag = e('#id-room-name')
+           tag.innerHTML = `聊天室 - ${ current_room }`
+        }
+        var join_room = function (room) {
+            clear_board()
+            socket.emit('join', room,function () {
+                change_title()
+            })
+
+        }
+        var __main = function () {
+            var namespace = '/chat'
+
+            var input = e('#id-input')
+            var input = e('#id-input')
+            var url = `ws://${document.domain}:${location.port}${namespace}`
+            socket = io.connect(url, {transports: ['websocket']})
+
+            //log提示connected
+            socket.on('connect', function() {
+                console.log('web connected')
+            })
+             //加入room
+            join_room(current_room)
+            //接收用户出入消息
+            socket.on('status', function (data) {
+                chat_area.value += `< ${data} >\n`
+            })
+            //接收聊天消息
+            socket.on('message', function (data) {
+                chat_area.value += `${data}\n`
+            })
+
+            //发送消息
+            input.addEventListener('keypress', function (event) {
+                if (event.key == 'Enter') {
+                    content = input.value
+                    socket.emit('send', content, function () {
+                        //清空输入框
+                        input.value = ''
+                    })
+                }
+            })
+
+            //切换room
+            e('#id-choose-room').addEventListener('click',function (event) {
+                var self = event.target
+                if (self.classList.contains('room')){
+                    socket.emit('leave', '',function () {
+                        current_room = self.text
+                        join_room(current_room)
+                    })
+                }
+            })
+        }
+        __main()
+    </script>
+
+</body>
+</html>
